@@ -1,0 +1,48 @@
+name: Check
+
+on: [pull_request]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v2
+
+            - name: Use Node.js
+              uses: actions/setup-node@v2
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Generate build code
+              run: npm run build --if-present
+
+            - name: Fix EOF Newline
+              uses: gps/newline-at-eof@master
+              with:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  IGNORE_FILE_PATTERNS: |
+                      [
+                        "package-lock.json"
+                      ]
+                  COMMIT_MESSAGE: 'Fix formatting'
+
+            - name: Run formatter
+              run: npm run format
+
+            - name: Commit changes
+              uses: stefanzweifel/git-auto-commit-action@v4
+              with:
+                  commit_message: Format code
+
+            - name: Run linter
+              run: npm run lint-check
+
+            - uses: FirebaseExtended/action-hosting-deploy@v0
+              with:
+                  repoToken: '${{ secrets.GITHUB_TOKEN }}'
+                  firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+                  projectId: <project_id>
+              env:
+                  FIREBASE_CLI_PREVIEWS: hostingchannels

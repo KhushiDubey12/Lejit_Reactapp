@@ -1,0 +1,46 @@
+name: Release
+
+on:
+    push:
+        branches:
+            - master
+
+jobs:
+    Release:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v2
+
+            - name: Use Node.js
+              uses: actions/setup-node@v2
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Generate build code
+              run: npm run build --if-present
+
+            - name: Determine next version
+              uses: gps/determine-next-version@master
+              id: next_version
+              with:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Insert Next version to Package.json
+              run: sed -i 's/9999.9999.9999/${{steps.next_version.outputs.NEXT_BUILD_VERSION}}/' package.json
+
+            - uses: FirebaseExtended/action-hosting-deploy@v0
+              with:
+                  repoToken: '${{ secrets.GITHUB_TOKEN }}'
+                  firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+                  channelId: live
+                  projectId: <project_id>
+              env:
+                  FIREBASE_CLI_PREVIEWS: hostingchannels
+
+            - name: Tag commit
+              uses: gps/tag-commit@master
+              with:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAG_NAME: v${{steps.next_version.outputs.NEXT_BUILD_VERSION}}
